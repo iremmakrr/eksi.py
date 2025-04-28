@@ -1,0 +1,68 @@
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import chromedriver_autoinstaller
+import time
+
+class Ekşi:
+    def __init__(self, driver):
+        self.driver = driver
+        self.link_listesi = []
+
+    def url_ac(self, url):
+        self.driver.get(url)
+        self.driver.maximize_window()
+
+    def linkleri_cek(self):
+        wait = WebDriverWait(self.driver, 60)
+        container = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".topic-list.partial")))
+        li_elements = container.find_elements(By.TAG_NAME, "li")
+        for li in li_elements:
+            try:
+                a = li.find_element(By.TAG_NAME, 'a')
+                link = a.get_attribute('href')
+                self.link_listesi.append(link)
+            except:
+                continue
+
+    def tikla(self, secici_tipi, secici_degeri):
+        element = self.driver.find_element(secici_tipi, secici_degeri)
+        self.driver.execute_script("arguments[0].click();", element)
+        time.sleep(5)
+
+    def icerikleri_kaydet(self):
+        for link in self.link_listesi:
+            self.driver.get(link)
+            wait = WebDriverWait(self.driver, 60)
+
+            try:
+                konu_basligi = self.driver.find_element(By.CLASS_NAME, "title").text.strip()
+                dosya_adi = f"{konu_basligi}.txt".replace(" ", "_").replace("/", "-")
+            except:
+                dosya_adi = "bilinmeyen_konu.txt"
+
+            try:
+                pager = self.driver.find_element(By.CLASS_NAME, "pager")
+                sayfalar = pager.find_elements(By.TAG_NAME, "a")
+                max_sayfa = max([int(a.text.strip()) for a in sayfalar if a.text.strip().isdigit()])
+            except:
+                max_sayfa = 1
+
+            for sayfa in range(1, max_sayfa + 1):
+                if sayfa != 1:
+                    self.driver.get(f"{link}&p={sayfa}")
+
+                wait.until(EC.presence_of_element_located((By.ID, "entry-item-list")))
+                container = self.driver.find_element(By.ID, "entry-item-list")
+                li_elements = container.find_elements(By.TAG_NAME, "li")
+
+                for li in li_elements:
+                    try:
+                        content = li.find_element(By.CLASS_NAME, "content")
+                        with open(dosya_adi, "a", encoding="utf-8") as f:
+                            f.write(content.text + "\n" + "é")
+                    except:
+                        continue
+
+driver.quit()
